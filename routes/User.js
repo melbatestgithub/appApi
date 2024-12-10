@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const path = require("path"); 
 router.post("/payment/create-checkout-session", async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
@@ -33,14 +34,14 @@ router.post("/payment/create-checkout-session", async (req, res) => {
 
 // Payment success route
 router.get("/payment-success", (req, res) => {
-  // res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
-  res.status(200).send("Payment Processed Successfully !!!")
+  res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
+  
 });
 
 // Payment cancelled route
 router.get("/payment-cancelled", (req, res) => {
-  // res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
-  res.status(200).send("We would like to provide you with service, but we require payment of a one-time lifetime fee of $18.")
+  res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
+  
 });
 
 module.exports = router;
