@@ -33,12 +33,14 @@ router.post("/payment/create-checkout-session", async (req, res) => {
 
 // Payment success route
 router.get("/payment-success", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
+  // res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
+  res.status(200).send("Payment Processed Successfully !!!")
 });
 
 // Payment cancelled route
 router.get("/payment-cancelled", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
+  // res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
+  res.status(200).send("We would like to provide you with service, but we require payment of a one-time lifetime fee of $18.")
 });
 
 module.exports = router;
