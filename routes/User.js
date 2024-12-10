@@ -50,7 +50,7 @@ router.get("/payment-success", (req, res) => {
 
 // Payment cancelled route
 router.get("/payment-cancelled", (req, res) => {
-  res.send({ message: "Payment was cancelled. Please try again." });
+  res.send({ message: "We would like to provide you with service but we ask that you pay a time lifetime fee of $18 on the app." });
 });
 
 module.exports = router;
