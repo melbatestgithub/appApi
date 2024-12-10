@@ -19,14 +19,26 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/payment-success`,
-      cancel_url: `${req.protocol}://${req.get("host")}/payment-cancelled`,
+      success_url: `${req.protocol}://${req.get("host")}/user/payment-success`,
+      cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled`,
     });
 
     res.json({ url: session.url });
   } catch (error) {
     console.error("Error creating checkout session:", error);
     res.status(500).send({ message: "Error creating checkout session" });
+  }
+});
+
+
+router.get('/payment/status/:sessionId', async (req, res) => {
+  const sessionId = req.params.sessionId;
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    res.json({ status: session.payment_status });
+  } catch (error) {
+    res.status(500).send({ error: 'Error retrieving payment status' });
   }
 });
 
