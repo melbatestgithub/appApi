@@ -31,26 +31,14 @@ router.post("/payment/create-checkout-session", async (req, res) => {
 });
 
 
-router.get('/payment/status/:sessionId', async (req, res) => {
-  const sessionId = req.params.sessionId;
-
-  try {
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    res.json({ status: session.payment_status });
-  } catch (error) {
-    res.status(500).send({ error: 'Error retrieving payment status' });
-  }
-});
-
-
 // Payment success route
 router.get("/payment-success", (req, res) => {
-  res.send({ message: "Payment successful! You now have unlimited access." });
+  res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
 });
 
 // Payment cancelled route
 router.get("/payment-cancelled", (req, res) => {
-  res.send({ message: "We would like to provide you with service but we ask that you pay a time lifetime fee of $18 on the app." });
+  res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
 });
 
 module.exports = router;

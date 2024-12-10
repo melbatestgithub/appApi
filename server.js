@@ -3,10 +3,10 @@ const express = require("express");
 const cors = require("cors");
 const userRouter = require('./routes/User');
 require('dotenv').config();
-
 const app = express();
 
 // Middleware
+app.use(express.static(path.join(__dirname, "public")));
 app.use(bodyParser.json());
 app.use(express.json());
 app.use(cors());
