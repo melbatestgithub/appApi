@@ -96,7 +96,10 @@ router.post("/addUser",async(req,res)=>{
     })
     
   } catch (error) {
-    
+    res.status(500).send({
+      message:"Internal Server Error is occured",
+      error
+    })
   }
 })
 
