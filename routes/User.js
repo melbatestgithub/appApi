@@ -8,7 +8,7 @@ const path = require("path");
 
 router.post("/payment/create-checkout-session", async (req, res) => {
   try {
-    const { userId } = req.body; 
+    // const { userId } = req.body; 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -24,11 +24,8 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/user/payment-success?userId=${userId}`,
+      success_url: `${req.protocol}://${req.get("host")}/user/payment-success`,
       cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled`,
-      metadata: {
-        userId: userId 
-      },
     });
 
     res.json({ url: session.url });
@@ -64,19 +61,19 @@ router.get('/payment-status', (req, res) => {
   res.status(200).json({ hasPaid: userPaymentStatus })
 });
 
-// Payment success route
+
 router.get("/payment-success", async(req, res) => {
-  const { userId } = req.query;  // Assume userId is passed in the query string
-  try {
-    const user = await User.findById(userId);
-    if (user) {
-      res.status(200).json({ hasPaid: user.hasPaid });
-    } else {
-      res.status(404).json({ message: "User not found" });
-    }
-  } catch (error) {
-    res.status(500).send({ message: "Error fetching payment status", error });
-  }
+  // const { userId } = req.query;  
+  // try {
+  //   const user = await User.findById(userId);
+  //   if (user) {
+  //     res.status(200).json({ hasPaid: user.hasPaid });
+  //   } else {
+  //     res.status(404).json({ message: "User not found" });
+  //   }
+  // } catch (error) {
+  //   res.status(500).send({ message: "Error fetching payment status", error });
+  // }
   res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
   
 });
