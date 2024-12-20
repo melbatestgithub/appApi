@@ -7,6 +7,7 @@ const Payment=require("../models/Payment")
 
 router.post("/payment/create-checkout-session", async (req, res) => {
   const { imei } = req.body;  // Get IMEI from request body
+
   if (!imei) {
     return res.status(400).send({ message: "IMEI is required" });
   }
@@ -16,57 +17,52 @@ router.post("/payment/create-checkout-session", async (req, res) => {
     let payment = await Payment.findOne({ imei });
     if (!payment) {
       // If no payment record exists, create a new one with trial count 0
-      payment = new Payment({ imei });
+      payment = new Payment({ imei, trialCount: 0 });
     }
 
+    // If the device has used all 3 trials, proceed to payment
     if (payment.trialCount >= 3) {
-      // If the device has used all 3 trials, redirect to payment page
-      return res.status(400).send({ message: "You have used all your free trials. Please proceed with payment." });
+      // Create a Stripe checkout session for payment
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: "Unlimited Access to the Service",
+              },
+              unit_amount: 1800, // $18.00 in cents
+            },
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${req.protocol}://${req.get("host")}/payment-success?imei=${imei}`,
+        cancel_url: `${req.protocol}://${req.get("host")}/payment-cancelled?imei=${imei}`,
+        metadata: {
+          imei,  // Store IMEI in metadata to link with payment
+        },
+      });
+
+      // Create a pending payment record in MongoDB
+      payment.paymentStatus = 'pending';
+      await payment.save();
+
+      return res.json({ url: session.url });  // Redirect to Stripe Checkout session
     }
 
-    // Increment the trial count if the user has not reached 3 trials
+    // Increment the trial count and allow access for trial use
     payment.trialCount += 1;
     await payment.save();
 
-    // If the trial count is less than 3, allow access without payment
-    if (payment.trialCount < 3) {
-      return res.json({ message: "Access granted for trial use" });
-    }
+    return res.json({ message: "Access granted for trial use" });
 
-    // Create a Stripe checkout session for payment
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: "Unlimited Access to the Service",
-            },
-            unit_amount: 1800, // $18.00 in cents
-          },
-          quantity: 1,
-        },
-      ],
-      mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/payment-success?imei=${imei}`,
-      cancel_url: `${req.protocol}://${req.get("host")}/payment-cancelled?imei=${imei}`,
-      metadata: {
-        imei,  // Store IMEI in metadata to link with payment
-      },
-    });
-
-    // Create a pending payment record in MongoDB
-    payment.paymentStatus = 'pending';
-    await payment.save();
-
-    res.json({ url: session.url });  // Redirect to Stripe Checkout session
   } catch (error) {
     console.error("Error creating checkout session:", error);
     res.status(500).send({ message: "Error creating checkout session" });
   }
 });
-
 
 // Endpoint to check payment status and trial count
 router.get("/check-status", async (req, res) => {
@@ -93,6 +89,25 @@ router.get("/check-status", async (req, res) => {
   } catch (error) {
     console.error("Error checking payment status:", error);
     res.status(500).send({ message: "Error checking payment status" });
+  }
+});
+
+
+
+
+router.post('/update-trial-count', async (req, res) => {
+  const { imei, trialCount } = req.body;
+  try {
+    const user = await Payment.findOne({ imei });
+    if (user) {
+      user.trialCount = trialCount;
+      await user.save();
+      res.status(200).send({ message: 'Trial count updated successfully.' });
+    } else {
+      res.status(404).send({ message: 'User not found.' });
+    }
+  } catch (err) {
+    res.status(500).send({ message: 'Error updating trial count', error: err });
   }
 });
 
