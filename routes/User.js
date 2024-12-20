@@ -1,14 +1,39 @@
 const express = require("express");
 const router = express.Router();
-const bodyParser = require("body-parser");
-const User=require("../models/User")
 require("dotenv").config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const path = require("path"); 
+const Payment=require("../models/Payment")
 
 router.post("/payment/create-checkout-session", async (req, res) => {
+  const { imei } = req.body;  // Get IMEI from request body
+  if (!imei) {
+    return res.status(400).send({ message: "IMEI is required" });
+  }
+
   try {
-    // const { userId } = req.body; 
+    // Check payment and trial count for the device with the given IMEI
+    let payment = await Payment.findOne({ imei });
+    if (!payment) {
+      // If no payment record exists, create a new one with trial count 0
+      payment = new Payment({ imei });
+    }
+
+    if (payment.trialCount >= 3) {
+      // If the device has used all 3 trials, redirect to payment page
+      return res.status(400).send({ message: "You have used all your free trials. Please proceed with payment." });
+    }
+
+    // Increment the trial count if the user has not reached 3 trials
+    payment.trialCount += 1;
+    await payment.save();
+
+    // If the trial count is less than 3, allow access without payment
+    if (payment.trialCount < 3) {
+      return res.json({ message: "Access granted for trial use" });
+    }
+
+    // Create a Stripe checkout session for payment
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -16,7 +41,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
           price_data: {
             currency: "usd",
             product_data: {
-              name: "Unlimited Access to the Fact Checker App",
+              name: "Unlimited Access to the Service",
             },
             unit_amount: 1800, // $18.00 in cents
           },
@@ -24,90 +49,114 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: `${req.protocol}://${req.get("host")}/user/payment-success`,
-      cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled`,
+      success_url: `${req.protocol}://${req.get("host")}/payment-success?imei=${imei}`,
+      cancel_url: `${req.protocol}://${req.get("host")}/payment-cancelled?imei=${imei}`,
+      metadata: {
+        imei,  // Store IMEI in metadata to link with payment
+      },
     });
 
-    res.json({ url: session.url });
+    // Create a pending payment record in MongoDB
+    payment.paymentStatus = 'pending';
+    await payment.save();
+
+    res.json({ url: session.url });  // Redirect to Stripe Checkout session
   } catch (error) {
     console.error("Error creating checkout session:", error);
     res.status(500).send({ message: "Error creating checkout session" });
   }
 });
 
-const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET
-router.post('/webhook', bodyParser.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
+
+// Endpoint to check payment status and trial count
+router.get("/check-status", async (req, res) => {
+  const { imei } = req.query;  // Get IMEI from the query string
+  
+  if (!imei) {
+    return res.status(400).send({ message: "IMEI is required" });
+  }
 
   try {
-    const event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    // Find the payment record based on IMEI
+    const payment = await Payment.findOne({ imei });
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const userId = session.metadata.userId; // Use metadata to identify the user
-      
-      console.log(`Payment successful for user: ${userId}`);
+    if (!payment) {
+      return res.status(404).send({ message: "No payment record found for this IMEI" });
     }
 
-    res.json({ received: true });
-  } catch (err) {
-    res.status(400).send(`Webhook Error: ${err.message}`);
+    // Respond with the payment status and trial count
+    res.status(200).send({
+      hasUnlimitedAccess: payment.hasUnlimitedAccess,
+      trialCount: payment.trialCount,
+      paymentStatus: payment.paymentStatus,
+    });
+  } catch (error) {
+    console.error("Error checking payment status:", error);
+    res.status(500).send({ message: "Error checking payment status" });
   }
 });
 
-let userPaymentStatus = false;
 
-router.get('/payment-status', (req, res) => {
-  res.status(200).json({ hasPaid: userPaymentStatus })
+
+router.post("/webhook", async (req, res) => {
+  const sig = req.headers["stripe-signature"];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error("Webhook error:", err);
+    return res.status(400).send(`Webhook error: ${err.message}`);
+  }
+
+  // Handle the event
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object;
+    const imei = session.metadata.imei; // Get IMEI from metadata
+
+    // Update the payment record in MongoDB
+    try {
+      const payment = await Payment.findOne({ imei });
+
+      if (!payment) {
+        return res.status(404).send({ message: "Payment record not found" });
+      }
+
+      // Update payment status to 'paid' and grant unlimited access
+      payment.paymentStatus = 'paid';
+      payment.hasUnlimitedAccess = true;
+      payment.paymentDate = new Date();
+
+      await payment.save();
+
+      console.log(`Payment was successful for IMEI: ${imei}, unlimited access granted.`);
+    } catch (err) {
+      console.error("Error updating payment status:", err);
+    }
+  }
+
+  res.status(200).send("Webhook received");
 });
 
 
-router.get("/payment-success", async(req, res) => {
-  // const { userId } = req.query;  
-  // try {
-  //   const user = await User.findById(userId);
-  //   if (user) {
-  //     res.status(200).json({ hasPaid: user.hasPaid });
-  //   } else {
-  //     res.status(404).json({ message: "User not found" });
-  //   }
-  // } catch (error) {
-  //   res.status(500).send({ message: "Error fetching payment status", error });
-  // }
+
+
+
+router.get("/payment-success", async (req, res) => {
+  const { imei } = req.query; // Get IMEI from query string
+  if (imei) {
+    // You can update the user's access status based on IMEI here
+    console.log(`Payment successful for IMEI: ${imei}`);
+  }
+
   res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
-  
 });
-
 
 router.get("/payment-cancelled", (req, res) => {
   res.sendFile(path.join(__dirname, "../public", "payment-cancelled.html"));
 });
-
-router.post("/addUser",async(req,res)=>{
-  try {
-    const newUser= new User(req.body)
-    await newUser.save()
-    res.status(200).send({
-      message:"User is Created Successfully",
-      newUser
-    })
-    
-  } catch (error) {
-    res.status(500).send({
-      message:"Internal Server Error is occured",
-      error
-    })
-  }
-})
-
-router.get("/all",async(req,res)=>{
-  try {
-    const user=await User.find()
-    res.status(200).send(user)
-  } catch (error) {
-    res.status(500).send("Error is occured in getting users")
-  }
-})
 
 
 module.exports = router;
