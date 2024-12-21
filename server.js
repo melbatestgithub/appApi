@@ -19,7 +19,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   try {
     // Verify the webhook signature
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
 
     console.log("Received Event:", event);
 

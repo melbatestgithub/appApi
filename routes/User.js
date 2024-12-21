@@ -44,7 +44,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
           imei,  // Store IMEI in metadata to link with payment
         },
       });
-
+      console.log('Session metadata:', session.metadata);
       // Create a pending payment record in MongoDB
       payment.paymentStatus = 'pending';
       await payment.save();
