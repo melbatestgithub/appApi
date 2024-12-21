@@ -4,20 +4,61 @@ const cors = require("cors");
 const path = require("path");
 const mongoose=require("mongoose")
 const userRouter = require('./routes/User');
+const Payment=require('./models/Payment')
 require('dotenv').config();
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(
-  bodyParser.json({
-    verify: (req, res, buf) => {
-      if (req.originalUrl === "/user/webhook") {
-        req.rawBody = buf.toString(); // Save the raw body for Stripe
-      }
-    },
-  })
-);
+app.use(express.json()); 
 app.use(cors());
+
+// Apply express.raw middleware only for the Stripe webhook route
+app.post('/user/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    // Verify the webhook signature
+    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+
+    console.log("Received Event:", event);
+
+    // Acknowledge receipt of the webhook
+    res.status(200).send('Webhook received');
+
+    // Handle the event (e.g., payment_intent.succeeded)
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object;
+      console.log('Payment Intent succeeded:', paymentIntent.id);
+
+      // Process payment (update database, etc.)
+      try {
+        const imei = paymentIntent.metadata.imei;  // Assuming IMEI is in metadata
+        const payment = await Payment.findOne({ imei });
+
+        if (!payment) {
+          console.error('Payment record not found');
+          return;
+        }
+
+        // Update payment status
+        payment.status = 'paid';
+        payment.hasUnlimitedAccess = true;
+        payment.paymentDate = new Date();
+
+        await payment.save();
+        console.log(`Payment updated for IMEI: ${imei}`);
+      } catch (err) {
+        console.error('Error updating payment record:', err);
+      }
+    }
+  } catch (err) {
+    console.error('Webhook error:', err);
+    return res.status(400).send(`Webhook error: ${err.message}`);
+  }
+});
 
 // Routes
 app.use("/user", userRouter);
