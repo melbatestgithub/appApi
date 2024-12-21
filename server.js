@@ -8,7 +8,15 @@ require('dotenv').config();
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      if (req.originalUrl === "/user/webhook") {
+        req.rawBody = buf.toString(); // Save the raw body for Stripe signature verification
+      }
+    },
+  })
+);
 app.use(cors());
 
 // Routes
