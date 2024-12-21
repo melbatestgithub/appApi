@@ -139,6 +139,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   try {
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log("The event is",event)
 
     // Handle the event
     if (event.type === 'checkout.session.completed') {
