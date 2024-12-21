@@ -9,10 +9,8 @@ const Payment = require('./models/Payment');
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(express.json()); 
 app.use(cors());
 
-// Apply express.raw middleware only for the Stripe webhook route
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -59,6 +57,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+app.use(express.json()); 
+
+// Apply express.raw middleware only for the Stripe webhook route
+
 
 // Routes
 app.use("/user", userRouter);
