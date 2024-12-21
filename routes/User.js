@@ -6,7 +6,7 @@ const path = require("path");
 const Payment=require("../models/Payment")
 
 router.post("/payment/create-checkout-session", async (req, res) => {
-  const { imei } = req.body;  // Get IMEI from request body
+  const { imei } = req.body;  
 
   if (!imei) {
     return res.status(400).send({ message: "IMEI is required" });
