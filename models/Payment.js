@@ -14,7 +14,7 @@ const paymentSchema = new mongoose.Schema({
     type: Boolean,
     default: false, // Track if the device has paid and has unlimited access
   },
-  paymentStatus: {
+  status: {
     type: String,
     enum: ['pending', 'paid', 'failed'],
     default: 'pending',
