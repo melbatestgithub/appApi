@@ -10,7 +10,7 @@ const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cors());
-app.use(express.json()); 
+
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -19,7 +19,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   try {
     // Verify the webhook signature
-    event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
 
     console.log("Received Event:", event);
 
@@ -57,7 +57,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
-
+app.use(express.json()); 
 
 // Apply express.raw middleware only for the Stripe webhook route
 
