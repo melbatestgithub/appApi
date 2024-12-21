@@ -92,10 +92,7 @@ router.get("/check-status", async (req, res) => {
   }
 });
 
-
-
-
-router.get('/user/get-trial-count', async (req, res) => {
+router.get('/get-trial-count', async (req, res) => {
   const { imei } = req.query;
   if (!imei) {
     return res.status(400).json({ error: 'IMEI is required' });
@@ -113,6 +110,23 @@ router.get('/user/get-trial-count', async (req, res) => {
   }
 });
 
+
+
+router.post('/update-trial-count', async (req, res) => {
+  const { imei, trialCount } = req.body;
+  try {
+    const user = await Payment.findOne({ imei });
+    if (user) {
+      user.trialCount = trialCount;
+      await user.save();
+      res.status(200).send({ message: 'Trial count updated successfully.' });
+    } else {
+      res.status(404).send({ message: 'User not found.' });
+    }
+  } catch (err) {
+    res.status(500).send({ message: 'Error updating trial count', error: err });
+  }
+});
 
 
 
