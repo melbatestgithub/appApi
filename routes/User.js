@@ -38,8 +38,8 @@ router.post("/payment/create-checkout-session", async (req, res) => {
           },
         ],
         mode: "payment",
-        success_url: `${req.protocol}://${req.get("host")}/payment-success?imei=${imei}`,
-        cancel_url: `${req.protocol}://${req.get("host")}/payment-cancelled?imei=${imei}`,
+        success_url: `${req.protocol}://${req.get("host")}/user/payment-success?imei=${imei}`,
+        cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled?imei=${imei}`,
         metadata: {
           imei,  // Store IMEI in metadata to link with payment
         },
