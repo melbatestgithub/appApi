@@ -1,11 +1,11 @@
-const bodyParser = require("body-parser");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const mongoose=require("mongoose")
-const userRouter = require('./routes/User');
-const Payment=require('./models/Payment')
+const mongoose = require("mongoose");
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);  // Initialize Stripe with your secret key
+const userRouter = require('./routes/User');
+const Payment = require('./models/Payment');
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -18,7 +18,7 @@ app.post('/user/webhook', express.raw({ type: 'application/json' }), async (req,
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
-[]
+
   try {
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
@@ -65,8 +65,9 @@ app.use("/user", userRouter);
 
 const port = process.env.PORT || 7800;
 mongoose.connect(process.env.MONGO_URI)
-.then(()=>console.log("Database Connected Successfully"))
-.catch((err)=>console.log("Error in connecting to DB",err))
+  .then(() => console.log("Database Connected Successfully"))
+  .catch((err) => console.log("Error in connecting to DB", err));
+
 app.listen(port, () => {
   try {
     console.log(`Server is running on port ${port}`);
