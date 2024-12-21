@@ -33,7 +33,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
       // Process payment (update database, etc.)
       try {
-        const imei = paymentIntent.metadata.imei;  // Assuming IMEI is in metadata
+        const imei = paymentIntent.metadata?.imei;  // Assuming IMEI is in metadata
         const payment = await Payment.findOne({ imei });
 
         if (!payment) {
