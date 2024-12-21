@@ -30,7 +30,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
             price_data: {
               currency: "usd",
               product_data: {
-                name: "Unlimited Access to the Service",
+                name: "Unlimited Access to the Fact Checker App",
               },
               unit_amount: 1800, // $18.00 in cents
             },

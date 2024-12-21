@@ -26,14 +26,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     // Acknowledge receipt of the webhook
     res.status(200).send('Webhook received');
 
-    // Handle the event (e.g., payment_intent.succeeded)
+    // Handle the event for payment_intent.succeeded
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
       console.log('Payment Intent succeeded:', paymentIntent.id);
 
-      // Process payment (update database, etc.)
+      // Fetch the checkout session to get metadata
+      const session = await stripe.checkout.sessions.retrieve(paymentIntent.checkout_session);
+      console.log('Checkout Session metadata:', session.metadata);
+
+      // Process payment (update the database, etc.)
       try {
-        const imei = paymentIntent.metadata?.imei;  // Assuming IMEI is in metadata
+        const imei = session.metadata?.imei;  // Get IMEI from session metadata
         const payment = await Payment.findOne({ imei });
 
         if (!payment) {
@@ -41,7 +45,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           return;
         }
 
-        // Update payment status
+        // Update payment status in the database
         payment.status = 'paid';
         payment.hasUnlimitedAccess = true;
         payment.paymentDate = new Date();
@@ -57,6 +61,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+
 app.use(express.json()); 
 
 // Apply express.raw middleware only for the Stripe webhook route
