@@ -139,41 +139,46 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
   try {
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log("The event is",event)
 
-    // Handle the event
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const imei = session.metadata.imei;  // Get IMEI from metadata
+    console.log("The event is", event);
 
-      // Update payment record in MongoDB
+    // Acknowledge receipt to Stripe
+    res.status(200).send('Webhook received'); 
+
+    // Handle the event asynchronously
+    if (event.type === 'payment_intent.succeeded') {
+      const paymentIntent = event.data.object;
+
+      console.log('Payment Intent succeeded:', paymentIntent.id);
+
+      // Perform further processing (update database, etc.)
       try {
+        const imei = paymentIntent.metadata.imei;
         const payment = await Payment.findOne({ imei });
 
         if (!payment) {
-          return res.status(404).send({ message: 'Payment record not found' });
+          console.error('Payment record not found');
+          return;
         }
 
-        // Update the payment status to 'paid'
+        // Update payment status
         payment.status = 'paid';
         payment.hasUnlimitedAccess = true;
         payment.paymentDate = new Date();
 
         await payment.save();
 
-        console.log(`Payment successful for IMEI: ${imei}, unlimited access granted.`);
+        console.log(`Payment updated for IMEI: ${imei}`);
       } catch (err) {
-        console.error('Error updating payment status:', err);
+        console.error('Error updating payment record:', err);
       }
     }
-
-    // Send a response to Stripe to acknowledge receipt of the event
-    res.status(200).send('Webhook received');
   } catch (err) {
     console.error('Webhook error:', err);
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+
 
 
 
