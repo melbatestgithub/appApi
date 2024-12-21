@@ -6,14 +6,14 @@ const path = require("path");
 const Payment=require("../models/Payment")
 
 router.post("/payment/create-checkout-session", async (req, res) => {
-  const { imei } = req.body;  
+  const { imei } = req.body;  // Get IMEI from  body
 
   if (!imei) {
     return res.status(400).send({ message: "IMEI is required" });
   }
 
   try {
-
+    // Check payment and trial count for the device with the given IMEI
     let payment = await Payment.findOne({ imei });
     if (!payment) {
       // If no payment record exists, create a new one with trial count 0
