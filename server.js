@@ -17,7 +17,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   let event;
 
-  try {
+  try { 
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
 
@@ -32,7 +32,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       console.log('Payment Intent succeeded:', paymentIntent.id);
 
       // Fetch the checkout session to get metadata
-      const session = await stripe.checkout.sessions.retrieve(paymentIntent.checkout_session);
+      const session = await stripe.checkout.sessions.retrieve(paymentIntent.metadata.checkout_session);
       console.log('Checkout Session metadata:', session.metadata);
 
       // Process payment (update the database, etc.)
