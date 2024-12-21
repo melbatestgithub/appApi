@@ -130,49 +130,49 @@ router.post('/update-trial-count', async (req, res) => {
 
 
 
-router.post("/webhook", async (req, res) => {
-  const sig = req.headers["stripe-signature"];
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
 
   try {
+    // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+
+    // Handle the event
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const imei = session.metadata.imei;  // Get IMEI from metadata
+
+      // Update payment record in MongoDB
+      try {
+        const payment = await Payment.findOne({ imei });
+
+        if (!payment) {
+          return res.status(404).send({ message: 'Payment record not found' });
+        }
+
+        // Update the payment status to 'paid'
+        payment.status = 'paid';
+        payment.hasUnlimitedAccess = true;
+        payment.paymentDate = new Date();
+
+        await payment.save();
+
+        console.log(`Payment successful for IMEI: ${imei}, unlimited access granted.`);
+      } catch (err) {
+        console.error('Error updating payment status:', err);
+      }
+    }
+
+    // Send a response to Stripe to acknowledge receipt of the event
+    res.status(200).send('Webhook received');
   } catch (err) {
-    console.error("Webhook error:", err);
+    console.error('Webhook error:', err);
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
-
-  // Handle the event
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-    const imei = session.metadata.imei; // Get IMEI from metadata
-
-    // Update the payment record in MongoDB
-    try {
-      const payment = await Payment.findOne({ imei });
-
-      if (!payment) {
-        return res.status(404).send({ message: "Payment record not found" });
-      }
-
-      // Update payment status to 'paid' and grant unlimited access
-      payment.status = 'paid';
-      payment.hasUnlimitedAccess = true;
-      payment.paymentDate = new Date();
-
-      await payment.save();
-
-      console.log(`Payment was successful for IMEI: ${imei}, unlimited access granted.`);
-    } catch (err) {
-      console.error("Error updating payment status:", err);
-    }
-  }
-
-  res.status(200).send("Webhook received");
 });
-
-
 
 
 
