@@ -9,12 +9,13 @@ const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(
-  bodyParser.json({
+  express.raw({
+    type: 'application/json',
     verify: (req, res, buf) => {
       if (req.originalUrl === "/user/webhook") {
-        req.rawBody = buf.toString(); // Save the raw body for Stripe
+        req.rawBody = buf.toString();  // Save the raw body for Stripe webhook signature verification
       }
-    },
+    }
   })
 );
 app.use(cors());
