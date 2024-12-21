@@ -84,7 +84,7 @@ router.get("/check-status", async (req, res) => {
     res.status(200).send({
       hasUnlimitedAccess: payment.hasUnlimitedAccess,
       trialCount: payment.trialCount,
-      paymentStatus: payment.paymentStatus,
+      status: payment.status,
     });
   } catch (error) {
     console.error("Error checking payment status:", error);
@@ -140,7 +140,7 @@ router.post("/webhook", async (req, res) => {
       }
 
       // Update payment status to 'paid' and grant unlimited access
-      payment.paymentStatus = 'paid';
+      payment.status = 'paid';
       payment.hasUnlimitedAccess = true;
       payment.paymentDate = new Date();
 
