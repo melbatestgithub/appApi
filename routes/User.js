@@ -196,9 +196,11 @@ router.get("/payment-success", async (req, res) => {
     const payment = await Payment.findOne({ imei });
 
     // Update the payment status
-    payment.paymentStatus = 'paid';
+    payment.status = 'paid';
     payment.hasUnlimitedAccess = true;
     payment.paymentDate = new Date();
+    await payment.save()
+    console.log(payment)
   }
 
   res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
