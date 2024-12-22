@@ -9,8 +9,7 @@ const Payment = require('./models/Payment');
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(cors());
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.use(cors());app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -23,27 +22,24 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     console.log("Received Event:", event);
 
     // Acknowledge receipt of the webhook
-     res.status(200).send('Webhook received');
+    res.status(200).send('Webhook received');
 
+    // Check if the event type is 'payment_intent.succeeded'
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
       console.log('Payment Intent succeeded:', paymentIntent);
-     
-      // Fetch the checkout session to get metadata
+
+      // Access metadata directly from the paymentIntent object
+      const imei = paymentIntent.metadata?.imei; // Get IMEI from metadata
+      if (!imei) {
+        console.error('IMEI not found in metadata');
+        return;
+      }
+
+      console.log('IMEI from metadata:', imei);
+
+      // Update the payment record in the database using the IMEI
       try {
-        const session = await stripe.checkout.sessions.retrieve(paymentIntent.charges.data[0].payment_intent);
-        console.log('Retrieved Checkout Session:', session);
-
-        // Check if metadata exists
-        const imei = session.metadata?.imei;
-        if (!imei) {
-          console.error('IMEI not found in metadata');
-          return;
-        }
-
-        console.log('IMEI from metadata:', imei);
-
-        // Update payment record in the database
         const payment = await Payment.findOne({ imei });
 
         if (!payment) {
@@ -51,7 +47,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           return;
         }
 
-        // Update payment status
+        // Update the payment status
         payment.paymentStatus = 'paid';
         payment.hasUnlimitedAccess = true;
         payment.paymentDate = new Date();
@@ -59,7 +55,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
         await payment.save();
         console.log(`Payment updated for IMEI: ${imei}`);
       } catch (err) {
-        console.error('Error retrieving session or updating payment:', err);
+        console.error('Error updating payment:', err);
       }
     }
   } catch (err) {
@@ -67,6 +63,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+
 
 
 app.use(express.json()); 
