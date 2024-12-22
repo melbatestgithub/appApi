@@ -45,15 +45,9 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         },
       });
 
-      // After creating the session, update the payment intent directly to ensure metadata is set
-      const paymentIntent = await stripe.paymentIntents.update(session.payment_intent, {
-        metadata: {
-          imei: imei.toString(),  // Add IMEI to metadata
-        },
-      });
-
-      console.log("Checkout session created");
-      console.log("Session metadata:", session.metadata);
+      // Log session metadata for debugging
+      console.log("Checkout Session created:", session.id);
+      console.log('Session metadata:', session.metadata);
 
       // Create a pending payment record in MongoDB
       payment.paymentStatus = 'pending';
@@ -73,6 +67,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
     res.status(500).send({ message: "Error creating checkout session" });
   }
 });
+
 
 // Endpoint to check payment status and trial count
 router.get("/check-status", async (req, res) => {

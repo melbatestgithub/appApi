@@ -17,12 +17,12 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   let event;
 
   try {
-    // Verify the webhook signature to ensure it's from Stripe
+    // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
 
     console.log("Received Event:", event);
 
-    // Acknowledge receipt of the webhook (Stripe will resend it if not acknowledged)
+    // Acknowledge receipt of the webhook
     res.status(200).send('Webhook received');
 
     if (event.type === 'payment_intent.succeeded') {
@@ -49,7 +49,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
           return;
         }
 
-        // Update the payment status to 'paid' and give the device unlimited access
+        // Update the payment status
         payment.paymentStatus = 'paid';
         payment.hasUnlimitedAccess = true;
         payment.paymentDate = new Date();
