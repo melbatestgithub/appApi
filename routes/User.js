@@ -17,7 +17,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
     let payment = await Payment.findOne({ imei });
     if (!payment) {
       // If no payment record exists, create a new one with trial count 0
-      payment = new Payment({ imei, trialCount: 0 });
+      // payment = new Payment({ imei, trialCount: 0 });
     }
 
     // If the device has used all 3 trials, proceed to payment
