@@ -50,7 +50,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
       console.log('Session metadata:', session.metadata);
 
       // Create a pending payment record in MongoDB
-      payment.paymentStatus = 'pending';
+      payment.status = 'pending';
       await payment.save();
 
       return res.json({ url: session.url });  // Redirect to Stripe Checkout session
@@ -99,21 +99,36 @@ router.get("/check-status", async (req, res) => {
 
 router.get('/get-trial-count', async (req, res) => {
   const { imei } = req.query;
+
   if (!imei) {
-    return res.status(400).json({ error: 'IMEI is required' });
+    return res.status(400).json({ message: 'IMEI is required.' });
   }
 
   try {
-    const user = await Payment.findOne({ imei });
-    if (user) {
-      res.status(200).json({ trialCount: user.trialCount || 0 });
-    } else {
-      res.status(404).json({ error: 'User not found' });
+    // Check if the device exists
+    let device = await Payment.findOne({ imei });
+
+    if (!device) {
+      // Create the device with default values if it doesn't exist
+      device = await Payment.create({
+        imei,
+        trialCount: 0, // Initial trial count
+        hasUnlimitedAccess: false, // Default value
+        status: 'Not Paid', // Default value
+        paymentDate: new Date(), // Current date
+      });
+
+      return res.status(200).json({ trialCount: device.trialCount });
     }
-  } catch (err) {
-    res.status(500).json({ error: 'Server error' });
+
+    // If the device exists, return its trial count
+    res.status(200).json({ trialCount: device.trialCount });
+  } catch (error) {
+    console.error('Error fetching or creating device:', error);
+    res.status(500).json({ message: 'Error fetching trial count', error });
   }
 });
+
 
 
 
