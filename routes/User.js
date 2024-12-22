@@ -45,6 +45,7 @@ router.post("/payment/create-checkout-session", async (req, res) => {
          
         },
       });
+      console.log("checkout seassion")
       console.log('Session metadata:', session.metadata);
       // Create a pending payment record in MongoDB
       payment.paymentStatus = 'pending';

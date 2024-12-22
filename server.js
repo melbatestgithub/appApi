@@ -9,7 +9,9 @@ const Payment = require('./models/Payment');
 const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
-app.use(cors());app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+app.use(cors());
+
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -24,13 +26,13 @@ app.use(cors());app.post('/webhook', express.raw({ type: 'application/json' }), 
     // Acknowledge receipt of the webhook
     res.status(200).send('Webhook received');
 
-    // Check if the event type is 'payment_intent.succeeded'
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
       console.log('Payment Intent succeeded:', paymentIntent);
 
-      // Access metadata directly from the paymentIntent object
-      const imei = paymentIntent.metadata?.imei; // Get IMEI from metadata
+      // Check metadata from the payment intent itself
+      const imei = paymentIntent.metadata?.imei;  // Get IMEI from metadata
+      console.log('PaymentIntent Metadata:', paymentIntent.metadata);  // Log full metadata
       if (!imei) {
         console.error('IMEI not found in metadata');
         return;
@@ -63,6 +65,7 @@ app.use(cors());app.post('/webhook', express.raw({ type: 'application/json' }), 
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+
 
 
 
