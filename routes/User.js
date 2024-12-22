@@ -41,8 +41,8 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         success_url: `${req.protocol}://${req.get("host")}/user/payment-success?imei=${imei}`,
         cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled?imei=${imei}`,
         metadata: {
-          imei,  // Store IMEI in metadata to link with payment
-          // checkout_session: session.id
+          imei: imei.toString(), // Store IMEI in metadata to link with payment
+         
         },
       });
       console.log('Session metadata:', session.metadata);

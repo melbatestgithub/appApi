@@ -10,50 +10,56 @@ const app = express();
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use(cors());
-
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   let event;
 
-  try { 
+  try {
     // Verify the webhook signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
 
     console.log("Received Event:", event);
 
     // Acknowledge receipt of the webhook
-    res.status(200).send('Webhook received');
+     res.status(200).send('Webhook received');
 
-    // Handle the event for payment_intent.succeeded
     if (event.type === 'payment_intent.succeeded') {
       const paymentIntent = event.data.object;
-      console.log('Payment Intent succeeded:', paymentIntent.id);
-
+      console.log('Payment Intent succeeded:', paymentIntent);
+     
       // Fetch the checkout session to get metadata
-      const session = await stripe.checkout.sessions.retrieve(paymentIntent.metadata.checkout_session);
-      console.log('Checkout Session metadata:', session.metadata);
-
-      // Process payment (update the database, etc.)
       try {
-        const imei = session.metadata?.imei;  // Get IMEI from session metadata
-        const payment = await Payment.findOne({ imei });
+        const session = await stripe.checkout.sessions.retrieve(paymentIntent.charges.data[0].payment_intent);
+        console.log('Retrieved Checkout Session:', session);
 
-        if (!payment) {
-          console.error('Payment record not found');
+        // Check if metadata exists
+        const imei = session.metadata?.imei;
+        if (!imei) {
+          console.error('IMEI not found in metadata');
           return;
         }
 
-        // Update payment status in the database
-        payment.status = 'paid';
+        console.log('IMEI from metadata:', imei);
+
+        // Update payment record in the database
+        const payment = await Payment.findOne({ imei });
+
+        if (!payment) {
+          console.error('Payment record not found in database');
+          return;
+        }
+
+        // Update payment status
+        payment.paymentStatus = 'paid';
         payment.hasUnlimitedAccess = true;
         payment.paymentDate = new Date();
 
         await payment.save();
         console.log(`Payment updated for IMEI: ${imei}`);
       } catch (err) {
-        console.error('Error updating payment record:', err);
+        console.error('Error retrieving session or updating payment:', err);
       }
     }
   } catch (err) {
@@ -61,6 +67,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
     return res.status(400).send(`Webhook error: ${err.message}`);
   }
 });
+
 
 app.use(express.json()); 
 
