@@ -192,6 +192,13 @@ router.get("/payment-success", async (req, res) => {
   if (imei) {
     // You can update the user's access status based on IMEI here
     console.log(`Payment successful for IMEI: ${imei}`);
+
+    const payment = await Payment.findOne({ imei });
+
+    // Update the payment status
+    payment.paymentStatus = 'paid';
+    payment.hasUnlimitedAccess = true;
+    payment.paymentDate = new Date();
   }
 
   res.sendFile(path.join(__dirname, "../public", "payment-success.html"));
