@@ -133,57 +133,16 @@ router.post('/update-trial-count', async (req, res) => {
   }
 });
 
-
-
-// router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-//   const sig = req.headers['stripe-signature'];
-//   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-//   let event;
-
-//   try {
-//     // Verify the webhook signature
-//     event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
-
-//     console.log("The event is", event);
-
-//     // Acknowledge receipt to Stripe
-//     res.status(200).send('Webhook received'); 
-
-//     // Handle the event asynchronously
-//     if (event.type === 'payment_intent.succeeded') {
-//       const paymentIntent = event.data.object;
-
-//       console.log('Payment Intent succeeded:', paymentIntent.id);
-
-//       // Perform further processing (update database, etc.)
-//       try {
-//         const imei = paymentIntent.metadata.imei;
-//         const payment = await Payment.findOne({ imei });
-
-//         if (!payment) {
-//           console.error('Payment record not found');
-//           return;
-//         }
-
-//         // Update payment status
-//         payment.status = 'paid';
-//         payment.hasUnlimitedAccess = true;
-//         payment.paymentDate = new Date();
-
-//         await payment.save();
-
-//         console.log(`Payment updated for IMEI: ${imei}`);
-//       } catch (err) {
-//         console.error('Error updating payment record:', err);
-//       }
-//     }
-//   } catch (err) {
-//     console.error('Webhook error:', err);
-//     return res.status(400).send(`Webhook error: ${err.message}`);
-//   }
-// });
-
+router.get("/get-status",async(req,res)=>{
+  const {imei}=req.query
+  try {
+    const User=await Payment.findOne({imei})
+    res.status(200).send(User)
+    
+  } catch (error) {
+    res.status(500).send("Internal Server Error is Occured")
+  }
+})
 
 
 
