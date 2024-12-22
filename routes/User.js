@@ -6,7 +6,7 @@ const path = require("path");
 const Payment=require("../models/Payment")
 
 router.post("/payment/create-checkout-session", async (req, res) => {
-  const { imei } = req.body;  // Get IMEI from  body
+  const { imei } = req.body;  // Get IMEI from body
 
   if (!imei) {
     return res.status(400).send({ message: "IMEI is required" });
@@ -42,11 +42,19 @@ router.post("/payment/create-checkout-session", async (req, res) => {
         cancel_url: `${req.protocol}://${req.get("host")}/user/payment-cancelled?imei=${imei}`,
         metadata: {
           imei: imei.toString(), // Store IMEI in metadata to link with payment
-         
         },
       });
-      console.log("checkout seassion")
-      console.log('Session metadata:', session.metadata);
+
+      // After creating the session, update the payment intent directly to ensure metadata is set
+      const paymentIntent = await stripe.paymentIntents.update(session.payment_intent, {
+        metadata: {
+          imei: imei.toString(),  // Add IMEI to metadata
+        },
+      });
+
+      console.log("Checkout session created");
+      console.log("Session metadata:", session.metadata);
+
       // Create a pending payment record in MongoDB
       payment.paymentStatus = 'pending';
       await payment.save();
