@@ -112,7 +112,7 @@ router.get('/get-trial-count', async (req, res) => {
       // Create the device with default values if it doesn't exist
       device = await Payment.create({
         imei,
-        trialCount: 0, // Initial trial count
+        trialCount: 1, // Initial trial count
         hasUnlimitedAccess: false, // Default value
         status: 'Not Paid', // Default value
         paymentDate: new Date(), // Current date
